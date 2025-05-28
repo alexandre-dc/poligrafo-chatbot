@@ -1,0 +1,89 @@
+version: "3.8"
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    ports:
+      - "8000:8000"
+    environment:
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - SHARED_DATA_DIR=/app/shared
+      - API_TOKEN=${API_TOKEN}
+      - S3_BUCKET=${S3_BUCKET}
+      - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
+      - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
+    volumes:
+      - ./shared:/app/shared
+
+  frontend:
+    build:
+      context: .
+      dockerfile: frontend/Dockerfile
+    ports:
+      - "8501:8501"
+    environment:
+      - API_URL=${API_URL}
+      - API_TOKEN=${API_TOKEN}
+    depends_on:
+      - backend
+
+  airflow-webserver:
+    image: apache/airflow:2.8.1-python3.11
+    environment:
+      - AIRFLOW__CORE__LOAD_EXAMPLES=False
+      - AIRFLOW__WEBSERVER__EXPOSE_CONFIG=True
+      - AIRFLOW__CORE__EXECUTOR=LocalExecutor
+      - AIRFLOW__DATABASE__SQL_ALCHEMY_CONN=postgresql+psycopg2://airflow:airflow@postgres/airflow
+      - API_TOKEN=${API_TOKEN}
+    ports:
+      - "8081:8080"  # Airflow UI on localhost:8081
+    volumes:
+      - airflow_data:/opt/airflow
+      - ./airflow/dags:/opt/airflow/dags
+      - ./airflow/logs:/opt/airflow/logs
+    command: bash -c "airflow db init && airflow webserver"
+    depends_on:
+      - airflow-scheduler
+      - postgres
+
+  airflow-scheduler:
+    image: apache/airflow:2.8.1-python3.11
+    environment:
+      - AIRFLOW__CORE__LOAD_EXAMPLES=False
+      - AIRFLOW__CORE__EXECUTOR=LocalExecutor
+      - AIRFLOW__DATABASE__SQL_ALCHEMY_CONN=postgresql+psycopg2://airflow:airflow@postgres/airflow
+      - API_TOKEN=${API_TOKEN}
+    volumes:
+      - airflow_data:/opt/airflow
+      - ./airflow/dags:/opt/airflow/dags
+      - ./airflow/logs:/opt/airflow/logs
+    command: scheduler
+    depends_on:
+      - postgres
+
+  postgres:
+    image: postgres:15
+    environment:
+      POSTGRES_USER: airflow
+      POSTGRES_PASSWORD: airflow
+      POSTGRES_DB: airflow
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  # airflow-job:
+  #   build:
+  #     context: .
+  #     dockerfile: airflow/Dockerfile
+  #   command: python /app/dags/update_index.py
+  #   environment:
+  #     - API_URL=${API_URL}
+  #     - API_TOKEN=${API_TOKEN}
+  #     - SHARED_DATA_DIR=/app/shared
+  #   volumes:
+  #     - ./shared:/app/shared
+
+
+volumes:
+  airflow_data:
+  postgres_data:

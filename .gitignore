@@ -1,0 +1,6 @@
+.env
+/shared
+.venv
+__pycache__
+
+*/logs

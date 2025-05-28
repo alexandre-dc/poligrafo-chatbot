@@ -3,8 +3,6 @@
 .venv
 __pycache__
 
-# */logs
-
-/airflow/logs/*
+/airflow/logs/*/
 
 *.pem

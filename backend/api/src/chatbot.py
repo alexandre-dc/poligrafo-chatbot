@@ -14,7 +14,7 @@ load_dotenv()
 INDEX_PATH = "shared/index/"
 
 S3_BUCKET = os.getenv("S3_BUCKET")
-S3_PREFIX = "shared/index/"  # The folder in S3 where index files are stored
+S3_PREFIX = "index/"  # The folder in S3 where index files are stored
 
 def download_index_from_s3():
     s3 = boto3.client('s3')
